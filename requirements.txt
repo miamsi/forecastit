@@ -1,0 +1,7 @@
+streamlit==1.32.0
+yfinance==0.2.37
+pandas
+numpy
+hmmlearn==0.3.2
+arch==6.3.0
+plotly==5.19.0
