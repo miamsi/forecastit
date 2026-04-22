@@ -9,28 +9,25 @@ import plotly.graph_objects as go
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="IHSG Volatility Machine", layout="wide")
 st.title("🤖 IHSG Volatility-Aware Trend Machine")
-st.markdown("Version 1.1: Zero-Fail Data Flattening (Fixed for PTBA.JK)")
+st.markdown("Version 1: Ticker History Fix (Bypasses Streamlit IP Blocking)")
 
 # --- SIDEBAR INPUTS ---
 st.sidebar.header("Machine Settings")
-ticker = st.sidebar.text_input("Stock Ticker (use .JK for IHSG)", value="PTBA.JK")
+ticker = st.sidebar.text_input("Stock Ticker (use .JK for IHSG)", value="BBRI.JK")
 lookback_years = st.sidebar.slider("Training History (Years)", 1, 5, 2)
 
-# --- 1. DATA INGESTION ENGINE (Version 1.1 - Manual Flattening) ---
+# --- 1. DATA INGESTION ENGINE (Version 1 - Ticker History Fix) ---
 @st.cache_data(ttl=3600)
 def fetch_data(symbol, years):
     try:
-        # Fetch data simply
-        data = yf.download(symbol, period=f"{years}y", interval="1d")
+        # FIX: yf.download() silently fails on Streamlit Cloud. 
+        # yf.Ticker().history() is much more robust and never returns Multi-Index!
+        stock = yf.Ticker(symbol)
+        data = stock.history(period=f"{years}y", interval="1d")
         
         if data.empty:
             return None
             
-        # FIX: If Yahoo returns Multi-Index columns (Ticker/Price), we flatten them
-        if isinstance(data.columns, pd.MultiIndex):
-            # Drop the ticker level if it exists
-            data.columns = data.columns.get_level_values(0)
-        
         # Ensure we have the required columns
         df = data[['Open', 'High', 'Low', 'Close', 'Volume']].copy()
         
@@ -112,7 +109,7 @@ if df is not None:
 
     # The Machine's Logic
     if df['Is_Volatile'].iloc[-1]:
-        st.warning(f"⚠️ **Regime Alert:** PTBA is in a high-volatility state. Moving Averages are likely to be 'whiplashed.' Tighten stops to {next_day_risk*100:.2f}%.")
+        st.warning(f"⚠️ **Regime Alert:** {ticker} is in a high-volatility state. Moving Averages are likely to be 'whiplashed.' Tighten stops to {next_day_risk*100:.2f}%.")
     else:
         st.info("✅ **Market Calm:** Trend following with Moving Averages is currently high-probability.")
 
